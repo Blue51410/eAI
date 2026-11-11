@@ -1,3 +1,8 @@
+## [Beta 7.4.1] - 2026-11-11
+
+### Added
+- Redesigned macOS installer: the `.dmg` now opens with a drag-to-Applications window.
+
 ## [Beta 7.4] - 2026-11-11
 
 ### Added
