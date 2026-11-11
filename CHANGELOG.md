@@ -1,3 +1,11 @@
+## [Beta 7.3] - 2026-11-11
+
+### Added
+- Delete account: permanently remove a profile from Settings → Account (two-step confirm), deleting its chats, settings and avatar files.
+
+### Changed
+- Web search toggle moved to a minimal icon in the top-right above the message bar; accent dot shows when it's on.
+
 ## [Beta 7.2] - 2026-11-11
 
 ### Fixed
