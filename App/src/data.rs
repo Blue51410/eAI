@@ -32,6 +32,8 @@ pub struct Settings {
     pub groups: Vec<AgentGroup>,
     pub active_group: Option<Uuid>,
     pub workspace_root: String,
+    /// UI language code ("en", "tr", ...). See `lang.rs`.
+    pub language: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
@@ -116,6 +118,7 @@ impl Default for Settings {
             groups: Vec::new(),
             active_group: None,
             workspace_root: env!("CARGO_MANIFEST_DIR").into(),
+            language: "en".into(),
         }
     }
 }
@@ -159,6 +162,9 @@ pub struct Source {
 pub struct Attachment {
     pub name: String,
     pub content: String,
+    /// Original file path (set for archives so they can be saved back).
+    #[serde(default)]
+    pub path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

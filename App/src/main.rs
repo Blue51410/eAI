@@ -7,6 +7,7 @@ mod chat;
 mod data;
 mod draw;
 mod icon;
+mod lang;
 mod markdown;
 mod net;
 mod ui;
@@ -158,6 +159,7 @@ pub struct App {
 
 impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        lang::load();
         ui::setup_fonts(&cc.egui_ctx);
         cc.egui_ctx.set_visuals(ui::visuals());
 
@@ -251,6 +253,9 @@ impl App {
 
         let mut settings = load_settings();
         settings.user_name = account.name.clone();
+        if !settings.language.is_empty() {
+            lang::set(&settings.language);
+        }
         self.settings = settings;
         self.saved = self.settings.clone();
         save_settings(&self.settings);
@@ -886,7 +891,11 @@ impl App {
                 .and_then(|n| n.to_str())
                 .unwrap_or("file")
                 .to_string();
-            self.attached_file = Some(Attachment { name, content });
+            self.attached_file = Some(Attachment {
+                name,
+                content,
+                path: None,
+            });
         }
     }
 
@@ -929,6 +938,11 @@ impl App {
             "png" | "jpg" | "jpeg" | "webp" | "gif" | "bmp"
         );
 
+        if let Some(att) = self.attach_archive(path, &name, &ext) {
+            self.attached_file = Some(att);
+            return Ok(());
+        }
+
         if is_image {
             match image::open(path) {
                 Ok(img) => {
@@ -949,14 +963,97 @@ impl App {
         } else {
             match std::fs::read_to_string(path) {
                 Ok(content) => {
-                    self.attached_file = Some(Attachment { name, content });
+                    self.attached_file = Some(Attachment {
+                        name,
+                        content,
+                        path: None,
+                    });
                     Ok(())
                 }
                 Err(_) => Err(format!(
-                    "Can't attach \"{name}\": only plain text and code files are supported (images must be PNG/JPG)."
+                    "Can't attach \"{name}\": only plain text, code and archive files are supported (images must be PNG/JPG)."
                 )),
             }
         }
+    }
+
+    /// Reads a `.jar` / `.zip` archive: the attachment content becomes the
+    /// entry list plus the contents of every text file inside (truncated), so
+    /// the model can read and discuss the code. The original path is kept so
+    /// the archive can be saved back to the user afterwards.
+    fn attach_archive(
+        &mut self,
+        path: &std::path::Path,
+        name: &str,
+        ext: &str,
+    ) -> Option<Attachment> {
+        if !matches!(ext, "jar" | "zip") {
+            return None;
+        }
+        let file = std::fs::File::open(path).ok()?;
+        let mut archive = zip::ZipArchive::new(file).ok()?;
+        let mut out = format!("Archive \"{name}\" — {} entries:\n", archive.len());
+        let mut bytes_used = 0usize;
+        const MAX_ENTRY_TEXT: usize = 24_000;
+        for i in 0..archive.len() {
+            let Ok(mut entry) = archive.by_index(i) else {
+                continue;
+            };
+            let entry_name = match entry.name() {
+                Ok(n) => n.to_string(),
+                Err(_) => continue,
+            };
+            let size = entry.size();
+            if entry.is_dir() {
+                out.push_str(&format!("- {entry_name}/ (folder)\n"));
+                continue;
+            }
+            out.push_str(&format!("- {entry_name} ({size} bytes)\n"));
+            // Include readable text files so the model can see the code.
+            let is_text = entry_name.ends_with(".java")
+                || entry_name.ends_with(".txt")
+                || entry_name.ends_with(".rs")
+                || entry_name.ends_with(".py")
+                || entry_name.ends_with(".js")
+                || entry_name.ends_with(".ts")
+                || entry_name.ends_with(".json")
+                || entry_name.ends_with(".xml")
+                || entry_name.ends_with(".yml")
+                || entry_name.ends_with(".yaml")
+                || entry_name.ends_with(".toml")
+                || entry_name.ends_with(".gradle")
+                || entry_name.ends_with(".properties")
+                || entry_name.ends_with(".kt")
+                || entry_name.ends_with(".md")
+                || entry_name.ends_with(".cpp")
+                || entry_name.ends_with(".h")
+                || entry_name.ends_with(".c")
+                || entry_name.ends_with(".cs")
+                || entry_name.ends_with(".go")
+                || entry_name.ends_with(".rb")
+                || entry_name.ends_with(".sh")
+                || entry_name.ends_with(".html")
+                || entry_name.ends_with(".css");
+            if !is_text || bytes_used >= MAX_ENTRY_TEXT {
+                continue;
+            }
+            let mut buf = Vec::new();
+            if std::io::Read::read_to_end(&mut entry, &mut buf).is_ok() {
+                if let Ok(text_part) = String::from_utf8(buf) {
+                    let remaining = MAX_ENTRY_TEXT - bytes_used;
+                    let slice: String = text_part.chars().take(remaining).collect();
+                    out.push_str(&format!(
+                        "\n--- {entry_name} ---\n{slice}\n"
+                    ));
+                    bytes_used += slice.len();
+                }
+            }
+        }
+        Some(Attachment {
+            name: name.to_string(),
+            content: out,
+            path: Some(path.display().to_string()),
+        })
     }
 
     pub fn import_avatar(&mut self, ctx: &egui::Context) {

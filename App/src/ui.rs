@@ -1,4 +1,5 @@
 use crate::account::Account;
+use crate::lang;
 use crate::data::*;
 use crate::draw::*;
 use crate::markdown;
@@ -381,6 +382,7 @@ fn auth_error(ui: &mut Ui, message: &str) {
 }
 
 fn account_row(ui: &mut Ui, account: &Account, selected: bool) -> egui::Response {
+    let l = lang::current();
     let (rect, resp) =
         ui.allocate_exact_size(Vec2::new(ui.available_width(), 50.0), Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -407,9 +409,9 @@ fn account_row(ui: &mut Ui, account: &Account, selected: bool) -> egui::Response
         TEXT,
     );
     let sub = if account.has_password() {
-        "Password protected"
+        lang::t(&l, "Password protected")
     } else {
-        "Click to sign in"
+        lang::t(&l, "Click to sign in")
     };
     p.text(
         Pos2::new(rect.left() + 54.0, rect.center().y + 9.0),
@@ -440,6 +442,22 @@ fn auth_screen(app: &mut App, ctx: &egui::Context) {
     egui::CentralPanel::default()
         .frame(Frame::none().fill(WINDOW_BG))
         .show(ctx, |ui| {
+            // Language picker (top-right of the login screen).
+            let lang_code = lang::current();
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.add_space(16.0);
+                egui::ComboBox::from_id_salt("auth_language")
+                    .selected_text(RichText::new(lang::name_of(&lang_code)).size(11.0).color(TEXT_SEC))
+                    .width(90.0)
+                    .show_ui(ui, |ui| {
+                        for (code, name) in lang::LANGUAGES {
+                            if ui.selectable_label(code == lang_code, name).clicked() {
+                                lang::set(code);
+                                app.settings.language = code.to_string();
+                            }
+                        }
+                    });
+            });
             ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
@@ -460,7 +478,7 @@ fn auth_screen(app: &mut App, ctx: &egui::Context) {
                         ui.add_space(10.0);
                         gradient_title(ui, APP_NAME, 26.0, t);
                         ui.add_space(6.0);
-                        let subtitle = if app.auth_register {
+                        let subtitle_key = if app.auth_register {
                             "Create a local profile to get started."
                         } else if app.accounts.len() == 1 && app.accounts[0].has_password() {
                             "Enter your password to continue."
@@ -469,7 +487,7 @@ fn auth_screen(app: &mut App, ctx: &egui::Context) {
                         } else {
                             "Choose your profile to continue."
                         };
-                        ui.label(RichText::new(subtitle).size(13.0).color(TEXT_SEC));
+                        ui.label(RichText::new(lang::t(&lang_code, subtitle_key)).size(13.0).color(TEXT_SEC));
                         ui.add_space(24.0);
 
                         let card_w = 400.0_f32.min((ui.available_width() - 32.0).max(280.0));
@@ -490,8 +508,9 @@ fn auth_screen(app: &mut App, ctx: &egui::Context) {
                         ui.add_space(18.0);
                         ui.label(
                             RichText::new(format!(
-                                "eAI Lite {} · everything stays on this device",
-                                env!("CARGO_PKG_VERSION")
+                                "eAI Lite {} · {}",
+                                env!("CARGO_PKG_VERSION"),
+                                lang::t(&lang_code, "everything stays on this device")
                             ))
                             .size(10.0)
                             .color(TEXT_TER),
@@ -539,6 +558,7 @@ fn auth_screen(app: &mut App, ctx: &egui::Context) {
 }
 
 fn auth_register_form(app: &mut App, ui: &mut Ui, submit: &mut bool, go_login: &mut bool) {
+    let l = lang::current();
     ui.style_mut().visuals.extreme_bg_color = Color32::from_rgb(29, 29, 31);
     ui.spacing_mut().item_spacing.y = 8.0;
     let enter = ui.input(|i| i.key_pressed(Key::Enter));
@@ -570,7 +590,7 @@ fn auth_register_form(app: &mut App, ui: &mut Ui, submit: &mut bool, go_login: &
         ui.add_space(6.0);
         ui.add(
             TextEdit::singleline(&mut app.auth_confirm)
-                .hint_text("Confirm password")
+                .hint_text(lang::t(&l, "Confirm password"))
                 .password(true)
                 .desired_width(f32::INFINITY)
                 .margin(Vec2::new(10.0, 8.0)),
@@ -584,7 +604,7 @@ fn auth_register_form(app: &mut App, ui: &mut Ui, submit: &mut bool, go_login: &
     }
 
     ui.add_space(14.0);
-    if primary_button(ui, "Create profile") {
+    if primary_button(ui, &lang::t(&l, "Create profile")) {
         *submit = true;
     }
     if enter {
@@ -594,7 +614,7 @@ fn auth_register_form(app: &mut App, ui: &mut Ui, submit: &mut bool, go_login: &
     if !app.accounts.is_empty() {
         ui.add_space(10.0);
         ui.vertical_centered(|ui| {
-            if text_link(ui, "I already have a profile") {
+            if text_link(ui, &lang::t(&l, "I already have a profile")) {
                 *go_login = true;
             }
         });
@@ -602,6 +622,7 @@ fn auth_register_form(app: &mut App, ui: &mut Ui, submit: &mut bool, go_login: &
 }
 
 fn auth_login_form(app: &mut App, ui: &mut Ui, submit: &mut Option<Uuid>, go_register: &mut bool) {
+    let l = lang::current();
     ui.style_mut().visuals.extreme_bg_color = Color32::from_rgb(29, 29, 31);
     ui.spacing_mut().item_spacing.y = 8.0;
     let enter = ui.input(|i| i.key_pressed(Key::Enter));
@@ -648,20 +669,20 @@ fn auth_login_form(app: &mut App, ui: &mut Ui, submit: &mut Option<Uuid>, go_reg
                 app.want_focus = false;
             }
             ui.add_space(14.0);
-            if primary_button(ui, "Sign in") {
+            if primary_button(ui, &lang::t(&l, "Sign in")) {
                 *submit = Some(account.id);
             }
             if enter {
                 *submit = Some(account.id);
             }
-        } else if accounts.len() == 1 && primary_button(ui, "Continue") {
+        } else if accounts.len() == 1 && primary_button(ui, &lang::t(&l, "Continue")) {
             *submit = Some(account.id);
         }
     }
 
     ui.add_space(12.0);
     ui.vertical_centered(|ui| {
-        if text_link(ui, "Create a new profile") {
+        if text_link(ui, &lang::t(&l, "Create a new profile")) {
             *go_register = true;
         }
     });
@@ -1789,6 +1810,20 @@ fn input_bar(app: &mut App, ui: &mut Ui) {
                         if ui.small_button("Remove").clicked() {
                             app.attached_file = None;
                         }
+                        let original = app
+                            .attached_file
+                            .as_ref()
+                            .and_then(|a| a.path.clone());
+                        if let Some(orig) = original {
+                            if ui.small_button("Save a copy").clicked() {
+                                if let Some(dest) = rfd::FileDialog::new()
+                                    .set_file_name(orig.rsplit('/').next().unwrap_or("file"))
+                                    .save_file()
+                                {
+                                    let _ = std::fs::copy(&orig, &dest);
+                                }
+                            }
+                        }
                     });
                 }
 
@@ -2419,6 +2454,24 @@ fn settings_content(app: &mut App, ui: &mut Ui) {
             }
         }
         SettingsTab::General => {
+            heading(ui, "GENERAL");
+            card(ui, |ui| {
+                row(ui, &lang::t(&lang::current(), "Language"), |ui| {
+                    let code = lang::current();
+                    egui::ComboBox::from_id_salt("settings_language")
+                        .selected_text(lang::name_of(&code))
+                        .width(140.0)
+                        .show_ui(ui, |ui| {
+                            for (c, name) in lang::LANGUAGES {
+                                if ui.selectable_label(c == code, name).clicked() {
+                                    lang::set(c);
+                                    app.settings.language = c.to_string();
+                                }
+                            }
+                        });
+                });
+                ui.add_space(8.0);
+            });
             heading(ui, "PROFILE");
             card(ui, |ui| {
                 ui.horizontal(|ui| {
