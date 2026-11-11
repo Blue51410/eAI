@@ -17,7 +17,7 @@ pub fn list(path: &Path) -> Result<Vec<Entry>, String> {
     for i in 0..archive.len() {
         let f = archive.by_index(i).map_err(|e| e.to_string())?;
         out.push(Entry {
-            name: f.name().to_string(),
+            name: f.name().map_err(|e| e.to_string())?.to_string(),
             size: f.size(),
             is_dir: f.is_dir(),
         });
@@ -45,7 +45,7 @@ pub fn write_entry(path: &Path, name: &str, data: &[u8], out: &Path) -> Result<(
     let options = zip::write::SimpleFileOptions::default();
     for i in 0..archive.len() {
         let mut f = archive.by_index(i).map_err(|e| e.to_string())?;
-        let fname = f.name().to_string();
+        let fname = f.name().map_err(|e| e.to_string())?.to_string();
         if fname == name {
             continue;
         }

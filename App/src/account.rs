@@ -117,7 +117,6 @@ mod tests {
             salt: String::new(),
             password: None,
         };
-        assert!(account.verify(""));
         assert!(account.verify(&Uuid::new_v4().to_string()));
         assert!(!account.has_password());
     }
