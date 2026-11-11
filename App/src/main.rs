@@ -137,6 +137,9 @@ pub struct App {
     pub icon_status: String,
 
     pub drop_status: String,
+
+    /// Two-step confirmation state for "Delete account".
+    pub delete_confirm: bool,
     pub thinking_open: HashSet<Uuid>,
     pub thinking_full: Option<Uuid>,
     pub copied: Option<(Uuid, f64)>,
@@ -211,6 +214,8 @@ impl App {
             icon_status: String::new(),
 
             drop_status: String::new(),
+
+            delete_confirm: false,
             thinking_open: HashSet::new(),
             thinking_full: None,
             copied: None,
@@ -316,9 +321,24 @@ impl App {
         Ok(())
     }
 
+    /// Permanently removes the signed-in profile: its account entry, chats,
+    /// avatar and settings files. Then returns to the profile picker.
+    pub fn delete_current_account(&mut self, ctx: &egui::Context) {
+        let Some(user) = self.current_user else {
+            return;
+        };
+        if let Some(av) = self.avatar.take() {
+            ctx.tex_manager().write().free(av.id());
+        }
+        self.accounts.retain(|a| a.id != user);
+        account::save_accounts(&self.accounts);
+        // Clear this profile's local data files.
+        let _ = std::fs::remove_dir_all(data::profile_dir(user));
+        self.sign_out();
+    }
+
     /// Saves the current chats and returns to the profile screen.
-    pub fn sign_out(&mut self) {
-        if self.generating.is_some() {
+    pub fn sign_out(&mut self) {        if self.generating.is_some() {
             self.stop();
         }
         self.sync_account_name();

@@ -1696,6 +1696,38 @@ fn input_bar(app: &mut App, ui: &mut Ui) {
             Vec2::new(composer_width, 16.0),
             Layout::right_to_left(Align::Center),
             |ui| {
+                // Minimal web-search toggle, top-right above the input bar.
+                let (ws_rect, ws_resp) = ui.allocate_exact_size(Vec2::splat(16.0), Sense::click());
+                let ws_resp = ws_resp
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_hover_text(if effective_search {
+                        "Web search on — click to turn off"
+                    } else {
+                        "Turn on web search"
+                    });
+                let ws_hover = ui.ctx().animate_bool(ws_resp.id, ws_resp.hovered());
+                let ws_color = if effective_search {
+                    ACCENT
+                } else {
+                    TEXT_SEC.gamma_multiply(0.6 + 0.4 * ws_hover)
+                };
+                icon_search(ui.painter(), ws_rect.center(), ws_color);
+                if effective_search {
+                    ui.painter()
+                        .circle_filled(ws_rect.right_center() + egui::vec2(4.0, -4.0), 2.5, ACCENT);
+                }
+                if ws_resp.clicked() {
+                    if let Some(agent) = app
+                        .settings
+                        .agents
+                        .iter_mut()
+                        .find(|a| Some(a.id) == active_agent_id)
+                    {
+                        agent.web_search = !agent.web_search;
+                    } else {
+                        app.settings.web_search = !app.settings.web_search;
+                    }
+                }
                 ui.label(
                     RichText::new(format!(
                         "{APP_NAME} can make mistakes. Verify important info."
@@ -1910,31 +1942,6 @@ fn input_bar(app: &mut App, ui: &mut Ui) {
                                     }
                                 }
                             });
-                    }
-                    let search_label = if effective_search {
-                        "Web search on"
-                    } else {
-                        "Web search"
-                    };
-                    let search_color = if effective_search { ACCENT } else { TEXT_SEC };
-                    if ui
-                        .add(
-                            Label::new(RichText::new(search_label).size(12.0).color(search_color))
-                                .sense(Sense::click()),
-                        )
-                        .on_hover_text("Toggle web search")
-                        .clicked()
-                    {
-                        if let Some(agent) = app
-                            .settings
-                            .agents
-                            .iter_mut()
-                            .find(|a| Some(a.id) == active_agent_id)
-                        {
-                            agent.web_search = !agent.web_search;
-                        } else {
-                            app.settings.web_search = !app.settings.web_search;
-                        }
                     }
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let (rect, resp) =
@@ -2448,6 +2455,26 @@ fn settings_content(app: &mut App, ui: &mut Ui) {
                 ui.add_space(8.0);
                 if settings_button(ui, "Sign out").clicked() {
                     app.sign_out();
+                }
+                ui.add_space(12.0);
+                ui.label(
+                    RichText::new(
+                        "Deleting permanently removes this profile with all of its chats, settings and avatar.",
+                    )
+                    .size(12.0)
+                    .color(TEXT_SEC),
+                );
+                ui.add_space(8.0);
+                if app.delete_confirm {
+                    if settings_button(ui, "Confirm delete").clicked() {
+                        app.delete_confirm = false;
+                        app.delete_current_account(ui.ctx());
+                    }
+                    if settings_button(ui, "Cancel").clicked() {
+                        app.delete_confirm = false;
+                    }
+                } else if settings_button(ui, "Delete account").clicked() {
+                    app.delete_confirm = true;
                 }
             });
             if !app.signed_in() {
