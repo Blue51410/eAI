@@ -1,4 +1,4 @@
-## [Beta 6.5] - 2026-11-11
+## [Beta 7.1] - 2026-11-11
 
 ### Fixed
 - Password hashing upgraded from iterated SHA-256 to PBKDF2-HMAC-SHA256 (100,000 iterations) with a per-profile random salt.
