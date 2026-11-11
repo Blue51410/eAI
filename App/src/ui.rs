@@ -1724,6 +1724,20 @@ fn input_bar(app: &mut App, ui: &mut Ui) {
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
 
+                if !app.drop_status.is_empty() {
+                    let warn = app.drop_status.starts_with("Can't attach");
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new(&app.drop_status)
+                                .size(11.0)
+                                .color(if warn { Color32::from_rgb(255, 150, 150) } else { TEXT_SEC }),
+                        );
+                        if ui.small_button("✕").clicked() {
+                            app.drop_status.clear();
+                        }
+                    });
+                }
+
                 if has_image {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("Image attached").size(11.0).color(TEXT_SEC));

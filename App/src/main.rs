@@ -135,6 +135,8 @@ pub struct App {
     pub new_ollama_slot: String,
     pub new_searx_slot: String,
     pub icon_status: String,
+
+    pub drop_status: String,
     pub thinking_open: HashSet<Uuid>,
     pub thinking_full: Option<Uuid>,
     pub copied: Option<(Uuid, f64)>,
@@ -207,6 +209,8 @@ impl App {
             new_ollama_slot: String::new(),
             new_searx_slot: String::new(),
             icon_status: String::new(),
+
+            drop_status: String::new(),
             thinking_open: HashSet::new(),
             thinking_full: None,
             copied: None,
@@ -866,6 +870,75 @@ impl App {
         }
     }
 
+    /// Attach a single file (dropped or picked). Returns Ok(()) on success,
+    /// or an error message explaining why the file can't be attached.
+    pub fn attach_path(&mut self, path: &std::path::Path) -> Result<(), String> {
+        if !path.exists() {
+            return Err(format!(
+                "Can't attach \"{}\": file no longer exists.",
+                path.display()
+            ));
+        }
+        if path.is_dir() {
+            return Err(format!(
+                "Can't attach \"{}\": folders aren't supported, drop files instead.",
+                path.display()
+            ));
+        }
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("file")
+            .to_string();
+
+        // Binary/unreadable files are rejected with a clear reason.
+        let meta = std::fs::metadata(path).map_err(|e| format!("Can't attach \"{name}\": {e}"))?;
+        if meta.len() > 8 * 1024 * 1024 {
+            return Err(format!(
+                "Can't attach \"{name}\": file is larger than 8 MB."
+            ));
+        }
+
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        let is_image = matches!(
+            ext.as_str(),
+            "png" | "jpg" | "jpeg" | "webp" | "gif" | "bmp"
+        );
+
+        if is_image {
+            match image::open(path) {
+                Ok(img) => {
+                    let img = img
+                        .resize(768, 768, image::imageops::FilterType::Triangle)
+                        .to_rgb8();
+                    let mut buf = std::io::Cursor::new(Vec::new());
+                    if img.write_to(&mut buf, image::ImageFormat::Jpeg).is_ok() {
+                        self.attached_image = Some(buf.into_inner());
+                        return Ok(());
+                    }
+                    Err(format!("Can't attach \"{name}\": unsupported image format."))
+                }
+                Err(_) => Err(format!(
+                    "Can't attach \"{name}\": image couldn't be decoded (try PNG/JPG)."
+                )),
+            }
+        } else {
+            match std::fs::read_to_string(path) {
+                Ok(content) => {
+                    self.attached_file = Some(Attachment { name, content });
+                    Ok(())
+                }
+                Err(_) => Err(format!(
+                    "Can't attach \"{name}\": only plain text and code files are supported (images must be PNG/JPG)."
+                )),
+            }
+        }
+    }
+
     pub fn import_avatar(&mut self, ctx: &egui::Context) {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("Images", &["png", "jpg", "jpeg"])
@@ -898,11 +971,33 @@ impl eframe::App for App {
         while let Ok(ev) = self.rx.try_recv() {
             self.handle(ev);
         }
-        // Auto-add dragged-in files as attachments
+        // Drag & drop: actually attach the dropped files, or explain why not.
         let dropped: Vec<_> = ctx.input(|i| i.raw.dropped_files.clone());
         if !dropped.is_empty() {
-            // trigger picker for first dropped path's directory? fallback: open file dialog
-            self.pick_attachment();
+            let mut attached = 0;
+            let mut errors: Vec<String> = Vec::new();
+            for f in &dropped {
+                let path = f.path.clone().unwrap_or_default();
+                if path.as_os_str().is_empty() {
+                    errors.push("Can't attach: the file couldn't be read (dragged from an app that doesn't expose its path). Try using the + picker instead.".to_string());
+                    continue;
+                }
+                match self.attach_path(&path) {
+                    Ok(()) => attached += 1,
+                    Err(e) => errors.push(e),
+                }
+            }
+            self.drop_status = if attached > 0 && errors.is_empty() {
+                format!("Attached {attached} file{}.", if attached == 1 { "" } else { "s" })
+            } else if attached > 0 {
+                format!(
+                    "Attached {attached} file{}. {}",
+                    if attached == 1 { "" } else { "s" },
+                    errors.join(" ")
+                )
+            } else {
+                errors.join(" ")
+            };
         }
         if self.signed_in() {
             if self.settings != self.saved {
