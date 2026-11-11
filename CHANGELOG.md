@@ -1,3 +1,12 @@
+## [Beta 7] - 2026-11-11
+
+### Added
+- Drag & drop files into the message bar to attach them (images and text/code files).
+- Clear warning shown in the composer when a file can't be attached, explaining why.
+
+### Changed
+- Attachment flow now matches the `+` picker (768px image resize, 8 MB limit).
+
 ## [Beta 6] - 2026-11-11
 
 ### Added
