@@ -1,3 +1,9 @@
+## [Beta 7.4] - 2026-11-11
+
+### Added
+- Language support: English (default), Türkçe, Deutsch, Español, Français. Pick from the login screen or Settings → General; saved globally.
+- `.jar` / `.zip` attachments: entry listing plus text/code file contents sent to the model, with a "Save a copy" button to export the original archive.
+
 ## [Beta 7.3] - 2026-11-11
 
 ### Added
