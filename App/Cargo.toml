@@ -19,6 +19,8 @@ base64 = "0.22"
 regex = "1"
 open = "5"
 sha2 = "0.10"
+pbkdf2 = "0.12.2"
+hmac = "0.12.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61", features = [

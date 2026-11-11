@@ -1,11 +1,14 @@
 use crate::data::base_dir;
+use hmac::Hmac;
+use pbkdf2::pbkdf2_hmac;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::path::PathBuf;
 use uuid::Uuid;
 
-/// Repeated hashing makes a stolen accounts file slower to brute-force.
+/// PBKDF2 iterations make a stolen accounts file slow to brute-force.
 const ITERATIONS: u32 = 100_000;
+const KEY_LEN: usize = 32;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Account {
@@ -60,15 +63,13 @@ pub fn new_salt() -> String {
     Uuid::new_v4().simple().to_string()
 }
 
+/// PBKDF2-HMAC-SHA256 key derivation. A per-profile random salt is combined
+/// with the password inside a standard KDF, so a stolen accounts file can't
+/// be brute-forced quickly.
 pub fn hash_password(password: &str, salt: &str) -> String {
-    let mut digest = Sha256::digest(format!("{salt}:{password}").into_bytes());
-    for _ in 1..ITERATIONS {
-        let mut hasher = Sha256::new();
-        hasher.update(digest);
-        hasher.update(salt.as_bytes());
-        digest = hasher.finalize();
-    }
-    to_hex(&digest)
+    let mut out = [0u8; KEY_LEN];
+    pbkdf2_hmac::<Sha256>(password.as_bytes(), salt.as_bytes(), ITERATIONS, &mut out);
+    to_hex(&out)
 }
 
 fn to_hex(bytes: &[u8]) -> String {
@@ -87,23 +88,25 @@ mod tests {
     #[test]
     fn password_round_trip() {
         let salt = new_salt();
-        let hash = hash_password("correct horse", &salt);
-        assert_ne!(hash, "correct horse");
+        let password = format!("pw-{}", Uuid::new_v4());
+        let hash = hash_password(&password, &salt);
+        assert_ne!(hash, password);
         assert_eq!(hash.len(), 64);
-        assert!(hash_password("correct horse", &salt) == hash);
+        assert_eq!(hash_password(&password, &salt), hash);
     }
 
     #[test]
     fn account_checks_password() {
         let salt = new_salt();
+        let password = format!("pw-{}", Uuid::new_v4());
         let account = Account {
             id: Uuid::new_v4(),
-            name: "Alex".into(),
+            name: Uuid::new_v4().simple().to_string(),
             salt: salt.clone(),
-            password: Some(hash_password("hunter2", &salt)),
+            password: Some(hash_password(&password, &salt)),
         };
-        assert!(account.verify("hunter2"));
-        assert!(!account.verify("hunter3"));
+        assert!(account.verify(&password));
+        assert!(!account.verify(&format!("{password}-x")));
         assert!(account.has_password());
     }
 
@@ -111,12 +114,12 @@ mod tests {
     fn account_without_password_accepts_anything() {
         let account = Account {
             id: Uuid::new_v4(),
-            name: "Sam".into(),
+            name: Uuid::new_v4().simple().to_string(),
             salt: String::new(),
             password: None,
         };
         assert!(account.verify(""));
-        assert!(account.verify("whatever"));
+        assert!(account.verify(&Uuid::new_v4().to_string()));
         assert!(!account.has_password());
     }
 }
