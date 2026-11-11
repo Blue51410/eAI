@@ -1,3 +1,18 @@
+## [Beta 6] - 2026-11-11
+
+### Added
+- Full source code published to the `main` branch.
+- Refreshed `SECURITY.md` with improved formatting and expanded context.
+- macOS `.app` bundle with icon for eAI Lite.
+
+### Changed
+- Rebuilt macOS and Windows binaries from source.
+
+### Fixed
+- Eliminated dead-code warnings in `archive.rs` and `net.rs`.
+
+PR: https://github.com/JustEroDeveloper/eAI/pull/6
+
 # Changelog
 
 All notable changes to **eAI Lite** are documented here.
