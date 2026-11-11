@@ -1,5 +1,4 @@
 use crate::data::base_dir;
-use hmac::Hmac;
 use pbkdf2::pbkdf2_hmac;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
