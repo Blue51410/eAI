@@ -1,11 +1,22 @@
-# Rust build output
+# ─── Rust / Cargo build output ────────────────────────────────────────────────
 /App/target/
 /App/target-*/
+**/*.rs.bk
 
-# macOS archive metadata
+# ─── macOS archive & app metadata ─────────────────────────────────────────────
 __MACOSX/
 ._*
 .DS_Store
 
-# Built macOS application bundle
+# ─── Built macOS application bundle ──────────────────────────────────────────
 /App/*.app/
+
+# ─── Release artifacts (packaged locally, shipped via GitHub Releases) ───────
+*.dmg
+*.exe
+eai-lite
+
+# ─── Editors / tooling ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
