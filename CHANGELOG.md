@@ -1,3 +1,9 @@
+## [Beta 7.2] - 2026-11-11
+
+### Fixed
+- Upgraded the `zip` crate from 2.6.1 to 9.5.1, fixing three Dependabot advisories (zip-cloaking RCE, unbounded symlink-target handling, AES entry HMAC bypass).
+- Removed the last hard-coded cryptographic value in `account.rs` tests.
+
 ## [Beta 7.1] - 2026-11-11
 
 ### Fixed
