@@ -2,12 +2,14 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
+#[allow(dead_code)]
 pub struct Entry {
     pub name: String,
     pub size: u64,
     pub is_dir: bool,
 }
 
+#[allow(dead_code)]
 pub fn list(path: &Path) -> Result<Vec<Entry>, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
@@ -23,6 +25,7 @@ pub fn list(path: &Path) -> Result<Vec<Entry>, String> {
     Ok(out)
 }
 
+#[allow(dead_code)]
 pub fn read_entry(path: &Path, name: &str) -> Result<Vec<u8>, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
@@ -32,6 +35,7 @@ pub fn read_entry(path: &Path, name: &str) -> Result<Vec<u8>, String> {
     Ok(buf)
 }
 
+#[allow(dead_code)]
 pub fn write_entry(path: &Path, name: &str, data: &[u8], out: &Path) -> Result<(), String> {
     // copy archive, replace/add entry
     let file = File::open(path).map_err(|e| e.to_string())?;

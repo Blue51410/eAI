@@ -32,6 +32,7 @@ pub fn fetch_models(host: &str) -> Result<Vec<String>, String> {
         .unwrap_or_default())
 }
 
+#[allow(dead_code)]
 pub fn fetch_models_openai(base: &str, key: &str) -> Result<Vec<String>, String> {
     let base = base.trim_end_matches('/');
     let mut req = client(10)?.get(format!("{base}/models"));
