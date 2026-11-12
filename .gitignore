@@ -16,6 +16,12 @@ __MACOSX/
 *.exe
 eai-lite
 
+# TypeScript auth backend
+/backend/node_modules/
+/backend/dist/
+/backend/.env
+/backend/data/
+
 # ─── Editors / tooling ───────────────────────────────────────────────────────
 .vscode/
 .idea/
